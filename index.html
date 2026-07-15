@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlgoCode — Interactive Algorithm Visualizer</title>
+    <meta name="description" content="Write and visualize your own pathfinding algorithms (A*, Dijkstra, RRT) from scratch in a professional interactive coding sandbox.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- ═══ Loading Screen ═══ -->
+    <div id="app-loader">
+        <div class="loader-content">
+            <div class="loader-icon">
+                <div class="spinner"></div>
+                <div class="spinner-glow"></div>
+            </div>
+            <h2>AlgoCode</h2>
+            <p id="loader-status">Initializing application…</p>
+            <div class="loader-bar">
+                <div class="loader-bar-fill" id="loader-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Main Application ═══ -->
+    <div id="app" class="hidden">
+
+        <!-- Header -->
+        <header id="header">
+            <div class="header-left">
+                <span class="logo-icon">◇</span>
+                <h1>AlgoCode</h1>
+            </div>
+            <div class="header-right">
+                <span class="status-badge" id="status-badge">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="status-text">Python Ready</span>
+                </span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="main">
+
+            <!-- ═══ Left Panel: Editor ═══ -->
+            <section id="editor-panel">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <span class="panel-icon">⟨/⟩</span>
+                        <span class="panel-title">Editor</span>
+                    </div>
+                    <span class="file-badge">algorithm.py</span>
+                </div>
+
+                <div id="editor-wrapper">
+                    <div id="editor"></div>
+                </div>
+
+                <div id="editor-toolbar">
+                    <button id="btn-run" class="btn btn-run" title="Execute your algorithm (Ctrl+Enter)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                        Run
+                    </button>
+                    <button id="btn-stop" class="btn btn-stop" disabled title="Stop execution">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                        Stop
+                    </button>
+                    <button id="btn-reset-viz" class="btn btn-ghost" title="Clear visualization overlay only">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        Reset Viz
+                    </button>
+                    <div class="toolbar-spacer"></div>
+                    <span id="execution-timer" class="execution-timer hidden">0.0s</span>
+                </div>
+
+                <!-- Console -->
+                <div id="console-section">
+                    <div class="panel-header console-header">
+                        <div class="panel-title-group">
+                            <span class="panel-icon">❯_</span>
+                            <span class="panel-title">Console</span>
+                        </div>
+                        <button id="btn-clear-console" class="btn-icon" title="Clear console">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                    <div id="console-output"><span class="console-welcome">Ready. Write your algorithm and press Run.</span></div>
+                </div>
+            </section>
+
+            <!-- ═══ Panel Resizer ═══ -->
+            <div id="panel-resizer" title="Drag to resize panels">
+                <div class="resizer-grip"></div>
+            </div>
+
+            <!-- ═══ Right Panel: Visualization ═══ -->
+            <section id="viz-panel">
+                <div class="panel-header viz-header">
+                    <div class="panel-title-group">
+                        <span class="panel-icon">◎</span>
+                        <span class="panel-title">Visualization Arena</span>
+                    </div>
+                    <div class="viz-controls">
+                        <div class="control-group">
+                            <label class="select-label" for="grid-size">Grid</label>
+                            <select id="grid-size" class="select-input">
+                                <option value="15">15 × 15</option>
+                                <option value="21">21 × 21</option>
+                                <option value="25" selected>25 × 25</option>
+                                <option value="31">31 × 31</option>
+                                <option value="41">41 × 41</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="viz-toolbar">
+                    <div class="tool-group" id="tool-group">
+                        <button class="btn btn-tool active" data-tool="wall" title="Draw walls">
+                            <span class="tool-swatch wall-swatch"></span>Wall
+                        </button>
+                        <button class="btn btn-tool" data-tool="erase" title="Erase walls">
+                            <span class="tool-swatch erase-swatch"></span>Erase
+                        </button>
+                        <button class="btn btn-tool" data-tool="start" title="Move start node">
+                            <span class="tool-swatch start-swatch"></span>Start
+                        </button>
+                        <button class="btn btn-tool" data-tool="goal" title="Move goal node">
+                            <span class="tool-swatch goal-swatch"></span>Goal
+                        </button>
+                    </div>
+                    <div class="toolbar-divider"></div>
+                    <button id="btn-generate" class="btn btn-accent" title="Generate random maze">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                        Generate Maze
+                    </button>
+                    <button id="btn-clear-grid" class="btn btn-ghost" title="Clear entire grid">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        Clear All
+                    </button>
+                    <div class="toolbar-divider"></div>
+                    <button id="btn-toggle-coords" class="btn btn-ghost" title="Show/hide grid coordinates">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="21"/><polyline points="19 9 21 12 19 15"/><polyline points="9 5 12 3 15 5"/></svg>
+                        Coords
+                    </button>
+                </div>
+
+                <div id="grid-container">
+                    <div id="grid-wrapper">
+                        <div id="col-labels" class="axis-labels col-labels hidden"></div>
+                        <div id="grid-row">
+                            <div id="row-labels" class="axis-labels row-labels hidden"></div>
+                            <div id="grid-inner">
+                                <div id="grid"></div>
+                                <div id="robot" class="hidden">🤖</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="legend">
+                    <div class="legend-item"><span class="legend-swatch legend-empty"></span>Empty</div>
+                    <div class="legend-item"><span class="legend-swatch legend-wall"></span>Wall</div>
+                    <div class="legend-item"><span class="legend-swatch legend-start"></span>Start</div>
+                    <div class="legend-item"><span class="legend-swatch legend-goal"></span>Goal</div>
+                    <div class="legend-item"><span class="legend-swatch legend-visited"></span>Visited</div>
+                    <div class="legend-item"><span class="legend-swatch legend-open"></span>Open</div>
+                    <div class="legend-item"><span class="legend-swatch legend-closed"></span>Closed</div>
+                    <div class="legend-item"><span class="legend-swatch legend-path"></span>Path</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ═══ External Libraries ═══ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js" crossorigin="anonymous"></script>
+    <script src="app.js"></script>
+</body>
+</html>
