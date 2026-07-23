@@ -49,12 +49,21 @@
 
             <!-- ═══ Left Panel: Editor ═══ -->
             <section id="editor-panel">
-                <div class="panel-header">
+                <div class="panel-header editor-header">
                     <div class="panel-title-group">
                         <span class="panel-icon">⟨/⟩</span>
                         <span class="panel-title">Editor</span>
                     </div>
-                    <span class="file-badge">algorithm.py</span>
+                    <div class="lang-toggle" id="lang-toggle">
+                        <div class="lang-toggle-slider" id="lang-slider"></div>
+                        <button class="lang-toggle-btn active" data-lang="python" id="btn-lang-python" title="Switch to Python">
+                            <span class="lang-icon">🐍</span> Python
+                        </button>
+                        <button class="lang-toggle-btn" data-lang="cpp" id="btn-lang-cpp" title="Switch to C++">
+                            <span class="lang-icon">⚡</span> C++
+                        </button>
+                    </div>
+                    <span class="file-badge" id="file-badge">algorithm.py</span>
                 </div>
 
                 <div id="editor-wrapper">
@@ -152,7 +161,6 @@
 
                 <div id="grid-container">
                     <div id="grid-wrapper">
-                        <div id="col-labels" class="axis-labels col-labels hidden"></div>
                         <div id="grid-row">
                             <div id="row-labels" class="axis-labels row-labels hidden"></div>
                             <div id="grid-inner">
@@ -160,6 +168,7 @@
                                 <div id="robot" class="hidden">🤖</div>
                             </div>
                         </div>
+                        <div id="col-labels" class="axis-labels col-labels hidden"></div>
                     </div>
                 </div>
 
@@ -180,6 +189,7 @@
     <!-- ═══ External Libraries ═══ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jscpp/dist/JSCPP.es5.min.js" crossorigin="anonymous"></script>
     <script src="app.js"></script>
 </body>
 </html>

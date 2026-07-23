@@ -20,6 +20,10 @@ let executionStopped = false;
 let executionStartTime = 0;
 let timerInterval = null;
 let coordsVisible = false;
+let currentLanguage = localStorage.getItem('algocode-lang') || 'python';
+
+// ─── Per-language editor content cache ───
+let editorContentCache = { python: null, cpp: null };
 
 // DOM references
 const $ = (sel) => document.querySelector(sel);
@@ -42,6 +46,12 @@ async function init() {
 
     setLoaderStatus('Ready!', 100);
     initEventListeners();
+
+    // Restore saved language preference
+    if (currentLanguage === 'cpp') {
+        switchLanguage('cpp', true);
+    }
+
     showApp();
 }
 
@@ -88,7 +98,7 @@ function initEditor() {
         displayIndentGuides: true,
         animatedScroll: true,
     });
-    editor.setValue(getTemplate(), -1);
+    editor.setValue(getPythonTemplate(), -1);
     editor.focus();
 
     // Ctrl+Enter / Cmd+Enter to run
@@ -99,7 +109,37 @@ function initEditor() {
     });
 }
 
-function getTemplate() {
+function switchLanguage(lang, isInit = false) {
+    if (lang === currentLanguage && !isInit) return;
+    if (isRunning) return;
+
+    // Cache current editor content
+    editorContentCache[currentLanguage] = editor.getValue();
+
+    currentLanguage = lang;
+    localStorage.setItem('algocode-lang', lang);
+
+    // Update editor mode
+    if (lang === 'python') {
+        editor.session.setMode('ace/mode/python');
+        editor.setValue(editorContentCache.python || getPythonTemplate(), -1);
+    } else {
+        editor.session.setMode('ace/mode/c_cpp');
+        editor.setValue(editorContentCache.cpp || getCppTemplate(), -1);
+    }
+    editor.getSession().clearAnnotations();
+
+    // Update UI
+    const toggle = $('#lang-toggle');
+    toggle.classList.toggle('cpp', lang === 'cpp');
+    $('#btn-lang-python').classList.toggle('active', lang === 'python');
+    $('#btn-lang-cpp').classList.toggle('active', lang === 'cpp');
+    $('#file-badge').textContent = lang === 'python' ? 'algorithm.py' : 'algorithm.cpp';
+
+    setStatusReady();
+}
+
+function getPythonTemplate() {
     return `# ═══════════════════════════════════════════════════════════
 #  AlgoCode — Write Your Algorithm Here
 # ═══════════════════════════════════════════════════════════
@@ -123,6 +163,57 @@ function getTemplate() {
 #  print() → output appears in the console below
 # ═══════════════════════════════════════════════════════════
 
+`;
+}
+
+function getCppTemplate() {
+    return `// ═══════════════════════════════════════════════════════════
+//  AlgoCode — Write Your Algorithm Here (C++)
+// ═══════════════════════════════════════════════════════════
+//
+//  GRID INFO:
+//    get_grid_cell(row, col)   → returns 0 (empty) or 1 (wall)
+//    int start_r, start_c;
+//    get_start(start_r, start_c);
+//    int goal_r, goal_c;
+//    get_goal(goal_r, goal_c);
+//    int rows, cols;
+//    get_grid_size(rows, cols);
+//
+//  VISUALIZATION:
+//    visit(row, col);          // Mark as visited (blue)
+//    open_node(row, col);      // Mark as frontier (amber)
+//    close_node(row, col);     // Mark as explored (purple)
+//    mark_path(row, col);      // Mark as path (gold)
+//    viz_sleep(ms);            // Pause for animation
+//    move_robot_to(row, col);  // Move robot to cell
+//
+//  cout << "text" << endl;  → output appears in the console below
+//
+//  NOTE: Animation is batched — your code runs first, then
+//        visualization commands are replayed with animation.
+// ═══════════════════════════════════════════════════════════
+#include <iostream>
+using namespace std;
+
+int main() {
+    // Get grid info
+    int start_r, start_c, goal_r, goal_c, rows, cols;
+    get_start(start_r, start_c);
+    get_goal(goal_r, goal_c);
+    get_grid_size(rows, cols);
+
+    cout << "Grid: " << rows << " x " << cols << endl;
+    cout << "Start: (" << start_r << ", " << start_c << ")" << endl;
+    cout << "Goal: (" << goal_r << ", " << goal_c << ")" << endl;
+
+    // Example: check if a cell is a wall
+    // if (get_grid_cell(r, c) == 0) { /* empty */ }
+
+    // Write your algorithm here!
+
+    return 0;
+}
 `;
 }
 
@@ -200,12 +291,12 @@ function renderAxisLabels(cellSize) {
         colLabels.appendChild(label);
     }
 
-    // Row labels (Y axis — along the left)
+    // Row labels (Y axis — along the left, 0 at bottom)
     rowLabels.innerHTML = '';
     for (let r = 0; r < gridRows; r++) {
         const label = document.createElement('span');
         label.className = 'axis-label';
-        label.textContent = r;
+        label.textContent = gridRows - 1 - r;
         label.style.height = (cellSize + 1) + 'px';
         rowLabels.appendChild(label);
     }
@@ -637,7 +728,8 @@ visualizer = Visualizer()
 // ═══════════════════════════════════════════════════════
 
 async function onRun() {
-    if (isRunning || !pyodide) return;
+    if (isRunning) return;
+    if (currentLanguage === 'python' && !pyodide) return;
 
     const code = editor.getValue();
     if (!code.trim()) {
@@ -653,23 +745,18 @@ async function onRun() {
     clearVisualization();
     clearConsole();
     editor.getSession().clearAnnotations();
-    appendToConsole('▶ Running algorithm…\n', 'info');
+    appendToConsole(`▶ Running algorithm (${currentLanguage === 'python' ? 'Python' : 'C++'})…\n`, 'info');
 
     // Timer
     executionStartTime = performance.now();
     startExecutionTimer();
 
     try {
-        // Reset stdout redirect in case user overwrote it
-        await pyodide.runPythonAsync(`
-import sys
-sys.stdout = _StdoutCapture()
-sys.stderr = _StderrCapture()
-visualizer._stopped = False
-`);
-
-        // Execute user code
-        await pyodide.runPythonAsync(code);
+        if (currentLanguage === 'python') {
+            await runPython(code);
+        } else {
+            await runCpp(code);
+        }
 
         if (!executionStopped) {
             const elapsed = ((performance.now() - executionStartTime) / 1000).toFixed(2);
@@ -678,14 +765,28 @@ visualizer._stopped = False
     } catch (err) {
         if (executionStopped) {
             appendToConsole('\n⛔ Execution stopped by user.', 'warning');
-        } else {
+        } else if (currentLanguage === 'python') {
             handlePythonError(err);
+        } else {
+            handleCppError(err);
         }
     } finally {
         isRunning = false;
         stopExecutionTimer();
         updateUIForStopped();
     }
+}
+
+async function runPython(code) {
+    // Reset stdout redirect in case user overwrote it
+    await pyodide.runPythonAsync(`
+import sys
+sys.stdout = _StdoutCapture()
+sys.stderr = _StderrCapture()
+visualizer._stopped = False
+`);
+    // Execute user code
+    await pyodide.runPythonAsync(code);
 }
 
 function onStop() {
@@ -711,6 +812,197 @@ function handlePythonError(err) {
             type: 'error',
             text: summary,
         }]);
+    }
+}
+
+function handleCppError(err) {
+    const msg = err.message || String(err);
+    appendToConsole('\n❌ C++ Error:\n' + msg, 'error');
+
+    // Try to extract line number from JSCPP error messages
+    const lineMatch = msg.match(/line\s*(\d+)/i);
+    if (lineMatch) {
+        const lineNum = parseInt(lineMatch[1]);
+        editor.getSession().setAnnotations([{
+            row: lineNum - 1,
+            column: 0,
+            type: 'error',
+            text: msg.split('\n')[0] || 'Error',
+        }]);
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  C++ Execution Engine (JSCPP)
+// ═══════════════════════════════════════════════════════
+
+async function runCpp(userCode) {
+    if (typeof JSCPP === 'undefined') {
+        throw new Error('JSCPP library not loaded. Check your internet connection and refresh the page.');
+    }
+
+    // Collect viz commands for batched replay
+    const vizCommands = [];
+
+    // Build wrapper code with our API functions implemented as macros/simple functions
+    // JSCPP doesn't support custom function injection easily, so we transpile our API calls
+    // into code that uses cout with special markers
+
+    // Pre-process user code to convert our API to cout markers
+    let processedCode = preprocessCppCode(userCode);
+
+    const outputLines = [];
+    const config = {
+        stdio: {
+            write: function(s) {
+                // Parse output for viz command markers
+                const str = String(s);
+                if (str.startsWith('__VIZ__:')) {
+                    const parts = str.substring(8).trim().split(':');
+                    vizCommands.push(parts);
+                } else {
+                    // Regular output — accumulate
+                    outputLines.push(str);
+                }
+            }
+        },
+        unsigned_overflow: 'warn',
+    };
+
+    // Run JSCPP
+    try {
+        JSCPP.run(processedCode, '', config);
+    } catch (e) {
+        // Flush any buffered output first
+        flushCppOutput(outputLines);
+        throw e;
+    }
+
+    // Flush regular output
+    flushCppOutput(outputLines);
+
+    // Replay viz commands with animation
+    if (vizCommands.length > 0) {
+        appendToConsole(`\n🎬 Replaying ${vizCommands.length} visualization steps…`, 'info');
+        await replayVizCommands(vizCommands);
+    }
+}
+
+function flushCppOutput(outputLines) {
+    // Join and split by newlines to get proper lines
+    const fullText = outputLines.join('');
+    if (!fullText) return;
+    const lines = fullText.split('\n');
+    for (const line of lines) {
+        if (line !== '') {
+            appendToConsole(line, 'output');
+        }
+    }
+}
+
+function preprocessCppCode(code) {
+    // Convert our high-level C++ API calls to cout-based markers that JSCPP can handle
+    // This is the transpilation layer
+
+    // Build the bridge: inject helper functions that output special markers
+    // JSCPP supports basic function definitions, arrays, loops, etc.
+    const bridgeCode = `
+#include <iostream>
+#include <cstdlib>
+using namespace std;
+
+// ═══ AlgoCode Bridge Functions ═══
+
+// Grid data (injected at runtime)
+${generateGridDataCode()}
+
+void get_start(int &r, int &c) { r = ${startNode[0]}; c = ${startNode[1]}; }
+void get_goal(int &r, int &c) { r = ${goalNode[0]}; c = ${goalNode[1]}; }
+void get_grid_size(int &r, int &c) { r = ${gridRows}; c = ${gridCols}; }
+
+void visit(int r, int c) { cout << "__VIZ__:visit:" << r << ":" << c << endl; }
+void open_node(int r, int c) { cout << "__VIZ__:open:" << r << ":" << c << endl; }
+void close_node(int r, int c) { cout << "__VIZ__:close:" << r << ":" << c << endl; }
+void mark_path(int r, int c) { cout << "__VIZ__:path:" << r << ":" << c << endl; }
+void viz_sleep(int ms) { cout << "__VIZ__:sleep:" << ms << ":0" << endl; }
+void move_robot_to(int r, int c) { cout << "__VIZ__:robot:" << r << ":" << c << endl; }
+
+`;
+
+    // Strip any #include and using namespace from user code since we provide them
+    let cleanedCode = code
+        .replace(/^\s*#include\s*<[^>]+>\s*$/gm, '// (include handled by bridge)')
+        .replace(/^\s*using\s+namespace\s+std\s*;\s*$/gm, '// (namespace handled by bridge)');
+
+    return bridgeCode + cleanedCode;
+}
+
+function generateGridDataCode() {
+    // Generate C++ array initialization for the grid
+    // JSCPP supports basic 2D arrays
+    let code = `int _grid_data[${gridRows}][${gridCols}] = {\n`;
+    for (let r = 0; r < gridRows; r++) {
+        code += '    {';
+        for (let c = 0; c < gridCols; c++) {
+            code += gridState[r][c];
+            if (c < gridCols - 1) code += ',';
+        }
+        code += '}';
+        if (r < gridRows - 1) code += ',';
+        code += '\n';
+    }
+    code += `};\n\n`;
+
+    // JSCPP doesn't support vector, so we provide a get_grid_cell function
+    // and a helper to access grid cells
+    code += `int get_grid_cell(int r, int c) { return _grid_data[r][c]; }\n`;
+
+    // For compatibility with vector<vector<int>> syntax, provide a workaround
+    // Users use get_grid_cell(r, c) instead
+    return code;
+}
+
+async function replayVizCommands(commands) {
+    let sleepMs = 15; // default animation speed
+
+    for (let i = 0; i < commands.length; i++) {
+        if (executionStopped) break;
+
+        const cmd = commands[i];
+        const action = cmd[0];
+        const arg1 = parseInt(cmd[1]);
+        const arg2 = parseInt(cmd[2]);
+
+        switch (action) {
+            case 'visit':
+                globalThis._setCellViz(arg1, arg2, 'visited');
+                break;
+            case 'open':
+                globalThis._setCellViz(arg1, arg2, 'open');
+                break;
+            case 'close':
+                globalThis._setCellViz(arg1, arg2, 'closed');
+                break;
+            case 'path':
+                globalThis._setCellViz(arg1, arg2, 'path');
+                break;
+            case 'sleep':
+                sleepMs = arg1;
+                await new Promise(r => setTimeout(r, sleepMs));
+                break;
+            case 'robot':
+                showRobotAt(arg1, arg2);
+                await new Promise(r => setTimeout(r, 60));
+                break;
+        }
+
+        // Add a small delay for non-sleep viz commands to animate
+        if (action !== 'sleep' && action !== 'robot') {
+            // Batch: only delay every few frames for performance
+            if (i % 3 === 0) {
+                await new Promise(r => setTimeout(r, sleepMs));
+            }
+        }
     }
 }
 
@@ -773,7 +1065,8 @@ function setStatus(text, state) {
 }
 
 function setStatusReady() {
-    setStatus('Python Ready', '');
+    const langName = currentLanguage === 'python' ? 'Python' : 'C++';
+    setStatus(`${langName} Ready`, '');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -841,6 +1134,10 @@ function initEventListeners() {
             appendToConsole('🗑️ Grid cleared.', 'info');
         }
     });
+
+    // ─── Language Toggle ───
+    $('#btn-lang-python').addEventListener('click', () => switchLanguage('python'));
+    $('#btn-lang-cpp').addEventListener('click', () => switchLanguage('cpp'));
 
     // ─── Coords Toggle ───
     $('#btn-toggle-coords').addEventListener('click', () => {
