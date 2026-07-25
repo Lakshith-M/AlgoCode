@@ -237,15 +237,25 @@ function renderTabs() {
             
             const finishRename = () => {
                 const newName = input.value.trim();
-                if (newName) {
+                if (newName && newName !== file.name) {
                     file.name = newName;
+                    file.fileHandle = null; // Name changed, force Save As
                     // Auto-update extension and language mode if they typed .py or .cpp
-                    if (newName.endsWith('.py')) {
+                    const lowerName = newName.toLowerCase();
+                    if (lowerName.endsWith('.py')) {
                         file.language = 'python';
-                        if (file.id === activeFileId) updateLanguageToggleUI();
-                    } else if (newName.endsWith('.cpp')) {
+                        if (file.id === activeFileId) {
+                            currentLanguage = 'python';
+                            editor.session.setMode('ace/mode/python');
+                            updateLanguageToggleUI();
+                        }
+                    } else if (lowerName.endsWith('.cpp') || lowerName.endsWith('.cc') || lowerName.endsWith('.cxx') || lowerName.endsWith('.c')) {
                         file.language = 'cpp';
-                        if (file.id === activeFileId) updateLanguageToggleUI();
+                        if (file.id === activeFileId) {
+                            currentLanguage = 'cpp';
+                            editor.session.setMode('ace/mode/c_cpp');
+                            updateLanguageToggleUI();
+                        }
                     }
                 }
                 renderTabs();
@@ -313,10 +323,17 @@ function switchLanguage(lang) {
     currentLanguage = lang;
     
     // Update extension
-    if (lang === 'python' && file.name.endsWith('.cpp')) {
-        file.name = file.name.replace('.cpp', '.py');
-    } else if (lang === 'cpp' && file.name.endsWith('.py')) {
-        file.name = file.name.replace('.py', '.cpp');
+    let nameChanged = false;
+    if (lang === 'python' && /\.(cpp|cc|cxx|c)$/i.test(file.name)) {
+        file.name = file.name.replace(/\.(cpp|cc|cxx|c)$/i, '.py');
+        nameChanged = true;
+    } else if (lang === 'cpp' && /\.py$/i.test(file.name)) {
+        file.name = file.name.replace(/\.py$/i, '.cpp');
+        nameChanged = true;
+    }
+    
+    if (nameChanged) {
+        file.fileHandle = null; // Force "Save As" when saving so it saves with the new extension
     }
     
     editor.session.setMode(lang === 'python' ? 'ace/mode/python' : 'ace/mode/c_cpp');
@@ -351,7 +368,8 @@ async function openLocalFile() {
             const contents = await fileData.text();
             
             // Determine language from extension
-            const lang = fileData.name.endsWith('.cpp') || fileData.name.endsWith('.cc') ? 'cpp' : 'python';
+            const lowerName = fileData.name.toLowerCase();
+            const lang = lowerName.endsWith('.cpp') || lowerName.endsWith('.cc') || lowerName.endsWith('.cxx') || lowerName.endsWith('.c') ? 'cpp' : 'python';
             
             fileIdCounter++;
             const id = 'file_' + fileIdCounter;
@@ -379,7 +397,8 @@ async function openLocalFile() {
                 const reader = new FileReader();
                 reader.onload = e => {
                     const contents = e.target.result;
-                    const lang = fileData.name.endsWith('.cpp') ? 'cpp' : 'python';
+                    const lowerName = fileData.name.toLowerCase();
+                    const lang = lowerName.endsWith('.cpp') || lowerName.endsWith('.cc') || lowerName.endsWith('.cxx') || lowerName.endsWith('.c') ? 'cpp' : 'python';
                     
                     fileIdCounter++;
                     const id = 'file_' + fileIdCounter;
@@ -425,8 +444,8 @@ async function saveCurrentFile() {
                 file.fileHandle = await window.showSaveFilePicker({
                     suggestedName: file.name,
                     types: [{
-                        description: 'Code File',
-                        accept: file.language === 'python' ? {'text/x-python': ['.py']} : {'text/x-c++src': ['.cpp']}
+                        description: file.language === 'python' ? 'Python File' : 'C++ File',
+                        accept: file.language === 'python' ? {'text/x-python': ['.py']} : {'text/x-c++src': ['.cpp', '.cc', '.cxx', '.c']}
                     }]
                 });
                 // Update name based on user's choice
