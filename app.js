@@ -48,7 +48,7 @@ async function init() {
     setLoaderStatus('Ready!', 100);
 
     // Initialize first file tab
-    createNewFile('python');
+    createNewFile(true);
     
     initEventListeners();
 
@@ -131,19 +131,73 @@ function initEditor() {
 
 let isSwitchingFile = false;
 
-function createNewFile(lang = 'python') {
-    fileIdCounter++;
+async function createNewFile(autoCreate = false) {
+    if (isRunning) return;
+
+    let filename = '';
+    let lang = 'python';
+    let fileHandle = null;
+
+    if (autoCreate === true) {
+        fileIdCounter++;
+        filename = `algorithm_${fileIdCounter}.py`;
+        lang = 'python';
+    } else {
+        try {
+            if ('showSaveFilePicker' in window) {
+                fileHandle = await window.showSaveFilePicker({
+                    suggestedName: `algorithm_${fileIdCounter + 1}.py`,
+                    types: [
+                        { description: 'Python File', accept: {'text/x-python': ['.py']} },
+                        { description: 'C++ File', accept: {'text/x-c++src': ['.cpp', '.cc', '.cxx', '.c']} }
+                    ]
+                });
+                const fileData = await fileHandle.getFile();
+                filename = fileData.name;
+            } else {
+                filename = prompt("Enter new file name (must end in .py or .cpp):", `algorithm_${fileIdCounter + 1}.py`);
+                if (!filename) return;
+            }
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                appendToConsole(`❌ Error creating file: ${err.message}`, 'error');
+            }
+            return;
+        }
+
+        const lowerName = filename.toLowerCase();
+        if (lowerName.endsWith('.cpp') || lowerName.endsWith('.cc') || lowerName.endsWith('.cxx') || lowerName.endsWith('.c')) {
+            lang = 'cpp';
+        } else if (lowerName.endsWith('.py')) {
+            lang = 'python';
+        } else {
+            alert("Invalid file extension. Please use .py or .cpp");
+            return;
+        }
+        fileIdCounter++;
+    }
+
     const id = 'file_' + fileIdCounter;
-    const ext = lang === 'python' ? '.py' : '.cpp';
     
     const newFile = {
         id: id,
-        name: `algorithm_${fileIdCounter}${ext}`,
+        name: filename,
         content: lang === 'python' ? getPythonTemplate() : getCppTemplate(),
         language: lang,
         isDirty: false,
-        fileHandle: null
+        fileHandle: fileHandle
     };
+
+    if (fileHandle) {
+        try {
+            const writable = await fileHandle.createWritable();
+            await writable.write(newFile.content);
+            await writable.close();
+            appendToConsole(`Created ${filename}`, 'info');
+        } catch(e) {
+            appendToConsole(`❌ Error saving file: ${e.message}`, 'error');
+        }
+    }
     
     openFiles.push(newFile);
     switchToFile(id);
@@ -176,7 +230,6 @@ function switchToFile(id) {
     editor.focus();
 
     renderTabs();
-    updateLanguageToggleUI();
     setStatusReady();
 }
 
@@ -247,14 +300,12 @@ function renderTabs() {
                         if (file.id === activeFileId) {
                             currentLanguage = 'python';
                             editor.session.setMode('ace/mode/python');
-                            updateLanguageToggleUI();
                         }
                     } else if (lowerName.endsWith('.cpp') || lowerName.endsWith('.cc') || lowerName.endsWith('.cxx') || lowerName.endsWith('.c')) {
                         file.language = 'cpp';
                         if (file.id === activeFileId) {
                             currentLanguage = 'cpp';
                             editor.session.setMode('ace/mode/c_cpp');
-                            updateLanguageToggleUI();
                         }
                     }
                 }
@@ -292,55 +343,6 @@ function renderTabs() {
     });
 }
 
-function updateLanguageToggleUI() {
-    const toggle = $('#lang-toggle');
-    toggle.classList.toggle('cpp', currentLanguage === 'cpp');
-    $('#btn-lang-python').classList.toggle('active', currentLanguage === 'python');
-    $('#btn-lang-cpp').classList.toggle('active', currentLanguage === 'cpp');
-}
-
-function switchLanguage(lang) {
-    if (isRunning || !activeFileId) return;
-    
-    const file = openFiles.find(f => f.id === activeFileId);
-    if (!file) return;
-
-    if (file.language === lang) return;
-
-    const oldLang = file.language;
-    const currentCode = editor.getValue();
-    
-    // Swap untouched templates
-    if (oldLang === 'python' && (file.content === getPythonTemplate() || currentCode === getPythonTemplate())) {
-        file.content = getCppTemplate();
-        editor.setValue(file.content, -1);
-    } else if (oldLang === 'cpp' && (file.content === getCppTemplate() || currentCode === getCppTemplate())) {
-        file.content = getPythonTemplate();
-        editor.setValue(file.content, -1);
-    }
-
-    file.language = lang;
-    currentLanguage = lang;
-    
-    // Update extension
-    let nameChanged = false;
-    if (lang === 'python' && /\.(cpp|cc|cxx|c)$/i.test(file.name)) {
-        file.name = file.name.replace(/\.(cpp|cc|cxx|c)$/i, '.py');
-        nameChanged = true;
-    } else if (lang === 'cpp' && /\.py$/i.test(file.name)) {
-        file.name = file.name.replace(/\.py$/i, '.cpp');
-        nameChanged = true;
-    }
-    
-    if (nameChanged) {
-        file.fileHandle = null; // Force "Save As" when saving so it saves with the new extension
-    }
-    
-    editor.session.setMode(lang === 'python' ? 'ace/mode/python' : 'ace/mode/c_cpp');
-    updateLanguageToggleUI();
-    renderTabs();
-    setStatusReady();
-}
 
 // ═══════════════════════════════════════════════════════
 //  Local Disk Integration (File System Access API)
@@ -1480,13 +1482,11 @@ function initEventListeners() {
     });
 
     // ─── File Actions ───
-    $('#btn-new-file').addEventListener('click', () => createNewFile(currentLanguage));
+    $('#btn-new-file').addEventListener('click', () => createNewFile(false));
     $('#btn-open-file').addEventListener('click', openLocalFile);
     $('#btn-save-file').addEventListener('click', saveCurrentFile);
 
-    // ─── Language Toggle ───
-    $('#btn-lang-python').addEventListener('click', () => switchLanguage('python'));
-    $('#btn-lang-cpp').addEventListener('click', () => switchLanguage('cpp'));
+
 
     // ─── Coords Toggle ───
     $('#btn-toggle-coords').addEventListener('click', () => {
