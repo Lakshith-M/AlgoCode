@@ -1260,9 +1260,9 @@ using namespace std;
 // Grid data (injected at runtime)
 ${generateGridDataCode()}
 
-void get_start(int &r, int &c) { r = ${startNode[0]}; c = ${startNode[1]}; }
-void get_goal(int &r, int &c) { r = ${goalNode[0]}; c = ${goalNode[1]}; }
-void get_grid_size(int &r, int &c) { r = ${gridRows}; c = ${gridCols}; }
+#define get_start(r, c) r = ${startNode[0]}; c = ${startNode[1]}
+#define get_goal(r, c) r = ${goalNode[0]}; c = ${goalNode[1]}
+#define get_grid_size(r, c) r = ${gridRows}; c = ${gridCols}
 
 void visit(int r, int c) { cout << "__VIZ__:visit:" << r << ":" << c << endl; }
 void open_node(int r, int c) { cout << "__VIZ__:open:" << r << ":" << c << endl; }
