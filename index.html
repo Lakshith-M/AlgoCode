@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 
@@ -57,13 +57,39 @@
                     <div class="lang-toggle" id="lang-toggle">
                         <div class="lang-toggle-slider" id="lang-slider"></div>
                         <button class="lang-toggle-btn active" data-lang="python" id="btn-lang-python" title="Switch to Python">
-                            <span class="lang-icon">🐍</span> Python
+                            <span class="lang-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M9 11a4 4 0 0 1 4 4"></path><path d="M20 20.5a1.5 1.5 0 0 1-3 0 1.5 1.5 0 0 1 3 0z"></path></svg>
+                            </span> Python
                         </button>
                         <button class="lang-toggle-btn" data-lang="cpp" id="btn-lang-cpp" title="Switch to C++">
-                            <span class="lang-icon">⚡</span> C++
+                            <span class="lang-icon">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline></svg>
+                            </span> C++
                         </button>
                     </div>
-                    <span class="file-badge" id="file-badge">algorithm.py</span>
+                    <div class="file-actions" id="file-actions">
+                        <button id="btn-new-file" class="btn-icon" title="New File (Ctrl+N)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                        <button id="btn-open-file" class="btn-icon" title="Open File (Ctrl+O)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        </button>
+                        <button id="btn-save-file" class="btn-icon" title="Save File (Ctrl+S)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        </button>
+                        <button id="btn-git-push" class="btn-icon" title="Git Commit & Push">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                        </button>
+                        <button id="btn-deploy" class="btn-icon" title="Deploy to Firebase">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="editor-tabs-bar" id="editor-tabs-bar">
+                    <div class="tabs-container" id="tabs-container">
+                        <!-- Tabs injected by JS -->
+                    </div>
                 </div>
 
                 <div id="editor-wrapper">
@@ -165,7 +191,9 @@
                             <div id="row-labels" class="axis-labels row-labels hidden"></div>
                             <div id="grid-inner">
                                 <div id="grid"></div>
-                                <div id="robot" class="hidden">🤖</div>
+                                <div id="robot" class="hidden">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>
+                                </div>
                             </div>
                         </div>
                         <div id="col-labels" class="axis-labels col-labels hidden"></div>
@@ -189,7 +217,7 @@
     <!-- ═══ External Libraries ═══ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jscpp/dist/JSCPP.es5.min.js" crossorigin="anonymous"></script>
-    <script src="app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jscpp@2.0.6/dist/JSCPP.es5.min.js" crossorigin="anonymous"></script>
+    <script src="app.js?v=2"></script>
 </body>
 </html>

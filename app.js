@@ -21,9 +21,10 @@ let executionStartTime = 0;
 let timerInterval = null;
 let coordsVisible = false;
 let currentLanguage = localStorage.getItem('algocode-lang') || 'python';
-
-// ─── Per-language editor content cache ───
-let editorContentCache = { python: null, cpp: null };
+// ─── File Management State ───
+let openFiles = [];
+let activeFileId = null;
+let fileIdCounter = 0;
 
 // DOM references
 const $ = (sel) => document.querySelector(sel);
@@ -45,12 +46,11 @@ async function init() {
     await initPyodide();
 
     setLoaderStatus('Ready!', 100);
-    initEventListeners();
 
-    // Restore saved language preference
-    if (currentLanguage === 'cpp') {
-        switchLanguage('cpp', true);
-    }
+    // Initialize first file tab
+    createNewFile('python');
+    
+    initEventListeners();
 
     showApp();
 }
@@ -98,8 +98,17 @@ function initEditor() {
         displayIndentGuides: true,
         animatedScroll: true,
     });
-    editor.setValue(getPythonTemplate(), -1);
-    editor.focus();
+    
+    // Listen for changes to mark file as dirty
+    editor.session.on('change', () => {
+        if (!activeFileId || isSwitchingFile) return;
+        const activeFile = openFiles.find(f => f.id === activeFileId);
+        if (activeFile && !activeFile.isDirty) {
+            // Check if it actually changed from saved content (simplified: just mark dirty)
+            activeFile.isDirty = true;
+            renderTabs();
+        }
+    });
 
     // Ctrl+Enter / Cmd+Enter to run
     editor.commands.addCommand({
@@ -107,36 +116,338 @@ function initEditor() {
         bindKey: { win: 'Ctrl-Enter', mac: 'Cmd-Enter' },
         exec: () => onRun(),
     });
+
+    // Ctrl+S / Cmd+S to save
+    editor.commands.addCommand({
+        name: 'saveFile',
+        bindKey: { win: 'Ctrl-S', mac: 'Cmd-S' },
+        exec: () => saveCurrentFile(),
+    });
 }
 
-function switchLanguage(lang, isInit = false) {
-    if (lang === currentLanguage && !isInit) return;
+// ═══════════════════════════════════════════════════════
+//  File Management & Tabs
+// ═══════════════════════════════════════════════════════
+
+let isSwitchingFile = false;
+
+function createNewFile(lang = 'python') {
+    fileIdCounter++;
+    const id = 'file_' + fileIdCounter;
+    const ext = lang === 'python' ? '.py' : '.cpp';
+    
+    const newFile = {
+        id: id,
+        name: `algorithm_${fileIdCounter}${ext}`,
+        content: lang === 'python' ? getPythonTemplate() : getCppTemplate(),
+        language: lang,
+        isDirty: false,
+        fileHandle: null
+    };
+    
+    openFiles.push(newFile);
+    switchToFile(id);
+}
+
+function switchToFile(id) {
     if (isRunning) return;
 
-    // Cache current editor content
-    editorContentCache[currentLanguage] = editor.getValue();
-
-    currentLanguage = lang;
-    localStorage.setItem('algocode-lang', lang);
-
-    // Update editor mode
-    if (lang === 'python') {
-        editor.session.setMode('ace/mode/python');
-        editor.setValue(editorContentCache.python || getPythonTemplate(), -1);
-    } else {
-        editor.session.setMode('ace/mode/c_cpp');
-        editor.setValue(editorContentCache.cpp || getCppTemplate(), -1);
+    // Save current editor content to the active file before switching
+    if (activeFileId) {
+        const currentFile = openFiles.find(f => f.id === activeFileId);
+        if (currentFile) {
+            currentFile.content = editor.getValue();
+        }
     }
+
+    const file = openFiles.find(f => f.id === id);
+    if (!file) return;
+
+    activeFileId = id;
+    currentLanguage = file.language;
+    
+    // Update editor
+    isSwitchingFile = true;
+    editor.session.setMode(file.language === 'python' ? 'ace/mode/python' : 'ace/mode/c_cpp');
+    editor.setValue(file.content, -1);
     editor.getSession().clearAnnotations();
+    isSwitchingFile = false;
+    
+    editor.focus();
 
-    // Update UI
-    const toggle = $('#lang-toggle');
-    toggle.classList.toggle('cpp', lang === 'cpp');
-    $('#btn-lang-python').classList.toggle('active', lang === 'python');
-    $('#btn-lang-cpp').classList.toggle('active', lang === 'cpp');
-    $('#file-badge').textContent = lang === 'python' ? 'algorithm.py' : 'algorithm.cpp';
-
+    renderTabs();
+    updateLanguageToggleUI();
     setStatusReady();
+}
+
+function closeFile(id, force = false) {
+    if (isRunning) return;
+    
+    const fileIndex = openFiles.findIndex(f => f.id === id);
+    if (fileIndex === -1) return;
+    const file = openFiles[fileIndex];
+
+    if (file.isDirty && !force) {
+        if (!confirm(`Save changes to ${file.name} before closing?`)) {
+            // For a real IDE, you'd prompt "Save, Don't Save, Cancel". 
+            // We simplify here: if they cancel the confirm, we don't close.
+            return;
+        }
+    }
+
+    openFiles.splice(fileIndex, 1);
+
+    if (openFiles.length === 0) {
+        createNewFile(); // Always keep at least one file open
+    } else if (activeFileId === id) {
+        // Switch to the previous tab, or the next if it was the first
+        const nextIndex = Math.max(0, fileIndex - 1);
+        switchToFile(openFiles[nextIndex].id);
+    } else {
+        renderTabs();
+    }
+}
+
+function renderTabs() {
+    const container = $('#tabs-container');
+    container.innerHTML = '';
+
+    openFiles.forEach(file => {
+        const tab = document.createElement('div');
+        tab.className = `editor-tab ${file.id === activeFileId ? 'active' : ''} ${file.isDirty ? 'dirty' : ''}`;
+        tab.onclick = () => switchToFile(file.id);
+
+        // Name span
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'tab-name';
+        nameSpan.textContent = file.name;
+        
+        // Double click to rename (if it's not a local disk file)
+        nameSpan.ondblclick = (e) => {
+            e.stopPropagation();
+            if (file.fileHandle) {
+                alert("Cannot rename files opened from disk directly. Use Save As.");
+                return;
+            }
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'tab-rename-input';
+            input.value = file.name;
+            
+            const finishRename = () => {
+                const newName = input.value.trim();
+                if (newName) {
+                    file.name = newName;
+                    // Auto-update extension and language mode if they typed .py or .cpp
+                    if (newName.endsWith('.py')) {
+                        file.language = 'python';
+                        if (file.id === activeFileId) updateLanguageToggleUI();
+                    } else if (newName.endsWith('.cpp')) {
+                        file.language = 'cpp';
+                        if (file.id === activeFileId) updateLanguageToggleUI();
+                    }
+                }
+                renderTabs();
+            };
+            
+            input.onblur = finishRename;
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') finishRename();
+                if (e.key === 'Escape') renderTabs();
+            };
+            
+            tab.replaceChild(input, nameSpan);
+            input.focus();
+            input.select();
+        };
+
+        // Dirty dot
+        const dot = document.createElement('div');
+        dot.className = 'tab-dirty-dot';
+
+        // Close button
+        const closeBtn = document.createElement('div');
+        closeBtn.className = 'tab-close';
+        closeBtn.innerHTML = '×';
+        closeBtn.onclick = (e) => {
+            e.stopPropagation();
+            closeFile(file.id);
+        };
+
+        tab.appendChild(nameSpan);
+        tab.appendChild(dot);
+        tab.appendChild(closeBtn);
+        container.appendChild(tab);
+    });
+}
+
+function updateLanguageToggleUI() {
+    const toggle = $('#lang-toggle');
+    toggle.classList.toggle('cpp', currentLanguage === 'cpp');
+    $('#btn-lang-python').classList.toggle('active', currentLanguage === 'python');
+    $('#btn-lang-cpp').classList.toggle('active', currentLanguage === 'cpp');
+}
+
+function switchLanguage(lang) {
+    if (isRunning || !activeFileId) return;
+    
+    const file = openFiles.find(f => f.id === activeFileId);
+    if (!file) return;
+
+    file.language = lang;
+    currentLanguage = lang;
+    
+    // Update extension
+    if (lang === 'python' && file.name.endsWith('.cpp')) {
+        file.name = file.name.replace('.cpp', '.py');
+    } else if (lang === 'cpp' && file.name.endsWith('.py')) {
+        file.name = file.name.replace('.py', '.cpp');
+    }
+    
+    editor.session.setMode(lang === 'python' ? 'ace/mode/python' : 'ace/mode/c_cpp');
+    updateLanguageToggleUI();
+    renderTabs();
+    setStatusReady();
+}
+
+// ═══════════════════════════════════════════════════════
+//  Local Disk Integration (File System Access API)
+// ═══════════════════════════════════════════════════════
+
+async function openLocalFile() {
+    if (isRunning) return;
+
+    try {
+        if ('showOpenFilePicker' in window) {
+            // Modern API
+            const [fileHandle] = await window.showOpenFilePicker({
+                types: [
+                    {
+                        description: 'Code Files',
+                        accept: {
+                            'text/x-python': ['.py'],
+                            'text/x-c++src': ['.cpp', '.cc', '.cxx']
+                        }
+                    }
+                ]
+            });
+            
+            const fileData = await fileHandle.getFile();
+            const contents = await fileData.text();
+            
+            // Determine language from extension
+            const lang = fileData.name.endsWith('.cpp') || fileData.name.endsWith('.cc') ? 'cpp' : 'python';
+            
+            fileIdCounter++;
+            const id = 'file_' + fileIdCounter;
+            openFiles.push({
+                id: id,
+                name: fileData.name,
+                content: contents,
+                language: lang,
+                isDirty: false,
+                fileHandle: fileHandle
+            });
+            
+            switchToFile(id);
+            appendToConsole(`Opened ${fileData.name}`, 'info');
+
+        } else {
+            // Fallback for older browsers (standard file input)
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.py,.cpp,.cc';
+            input.onchange = e => {
+                const fileData = e.target.files[0];
+                if (!fileData) return;
+                
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const contents = e.target.result;
+                    const lang = fileData.name.endsWith('.cpp') ? 'cpp' : 'python';
+                    
+                    fileIdCounter++;
+                    const id = 'file_' + fileIdCounter;
+                    openFiles.push({
+                        id: id,
+                        name: fileData.name,
+                        content: contents,
+                        language: lang,
+                        isDirty: false,
+                        fileHandle: null // Cannot hold handle with standard input
+                    });
+                    
+                    switchToFile(id);
+                    appendToConsole(`Opened ${fileData.name}`, 'info');
+                };
+                reader.readAsText(fileData);
+            };
+            input.click();
+        }
+    } catch (err) {
+        // User cancelled or error
+        if (err.name !== 'AbortError') {
+            appendToConsole(`❌ Error opening file: ${err.message}`, 'error');
+        }
+    }
+}
+
+async function saveCurrentFile() {
+    if (isRunning || !activeFileId) return;
+    
+    const file = openFiles.find(f => f.id === activeFileId);
+    if (!file) return;
+
+    // Update content from editor
+    file.content = editor.getValue();
+
+    try {
+        if ('showSaveFilePicker' in window) {
+            // Modern API
+            if (!file.fileHandle) {
+                // Pick a new file location
+                const ext = file.language === 'python' ? '.py' : '.cpp';
+                file.fileHandle = await window.showSaveFilePicker({
+                    suggestedName: file.name,
+                    types: [{
+                        description: 'Code File',
+                        accept: file.language === 'python' ? {'text/x-python': ['.py']} : {'text/x-c++src': ['.cpp']}
+                    }]
+                });
+                // Update name based on user's choice
+                const fileData = await file.fileHandle.getFile();
+                file.name = fileData.name;
+            }
+            
+            // Write to disk
+            const writable = await file.fileHandle.createWritable();
+            await writable.write(file.content);
+            await writable.close();
+            
+            file.isDirty = false;
+            renderTabs();
+            appendToConsole(`Saved ${file.name} to disk.`, 'success');
+            
+        } else {
+            // Fallback: Download file
+            const blob = new Blob([file.content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            file.isDirty = false;
+            renderTabs();
+            appendToConsole(`Downloaded ${file.name}.`, 'success');
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            appendToConsole(`❌ Error saving file: ${err.message}`, 'error');
+        }
+    }
 }
 
 function getPythonTemplate() {
@@ -745,7 +1056,7 @@ async function onRun() {
     clearVisualization();
     clearConsole();
     editor.getSession().clearAnnotations();
-    appendToConsole(`▶ Running algorithm (${currentLanguage === 'python' ? 'Python' : 'C++'})…\n`, 'info');
+    appendToConsole(`Running algorithm (${currentLanguage === 'python' ? 'Python' : 'C++'})…\n`, 'info');
 
     // Timer
     executionStartTime = performance.now();
@@ -760,11 +1071,11 @@ async function onRun() {
 
         if (!executionStopped) {
             const elapsed = ((performance.now() - executionStartTime) / 1000).toFixed(2);
-            appendToConsole(`\n✅ Execution completed in ${elapsed}s`, 'success');
+            appendToConsole(`\nExecution completed in ${elapsed}s`, 'success');
         }
     } catch (err) {
         if (executionStopped) {
-            appendToConsole('\n⛔ Execution stopped by user.', 'warning');
+            appendToConsole('\nExecution stopped by user.', 'warning');
         } else if (currentLanguage === 'python') {
             handlePythonError(err);
         } else {
@@ -797,7 +1108,7 @@ function onStop() {
 
 function handlePythonError(err) {
     const msg = err.message || String(err);
-    appendToConsole('\n❌ Error:\n' + msg, 'error');
+    appendToConsole('\nError:\n' + msg, 'error');
 
     // Try to extract line number for editor annotation
     const lineMatch = msg.match(/File "<exec>", line (\d+)/);
@@ -817,7 +1128,7 @@ function handlePythonError(err) {
 
 function handleCppError(err) {
     const msg = err.message || String(err);
-    appendToConsole('\n❌ C++ Error:\n' + msg, 'error');
+    appendToConsole('\nC++ Error:\n' + msg, 'error');
 
     // Try to extract line number from JSCPP error messages
     const lineMatch = msg.match(/line\s*(\d+)/i);
@@ -883,7 +1194,7 @@ async function runCpp(userCode) {
 
     // Replay viz commands with animation
     if (vizCommands.length > 0) {
-        appendToConsole(`\n🎬 Replaying ${vizCommands.length} visualization steps…`, 'info');
+        appendToConsole(`\nReplaying ${vizCommands.length} visualization steps…`, 'info');
         await replayVizCommands(vizCommands);
     }
 }
@@ -1120,7 +1431,7 @@ function initEventListeners() {
         if (!isRunning) {
             clearVisualization();
             clearConsole();
-            appendToConsole('🔄 Visualization reset. Maze preserved.', 'info');
+            appendToConsole('Visualization reset. Maze preserved.', 'info');
         }
     });
     $('#btn-clear-console').addEventListener('click', clearConsole);
@@ -1131,9 +1442,16 @@ function initEventListeners() {
         if (!isRunning) {
             clearGrid();
             clearConsole();
-            appendToConsole('🗑️ Grid cleared.', 'info');
+            appendToConsole('Grid cleared.', 'info');
         }
     });
+
+    // ─── File Actions ───
+    $('#btn-new-file').addEventListener('click', () => createNewFile(currentLanguage));
+    $('#btn-open-file').addEventListener('click', openLocalFile);
+    $('#btn-save-file').addEventListener('click', saveCurrentFile);
+    $('#btn-git-push').addEventListener('click', gitCommitAndPush);
+    $('#btn-deploy').addEventListener('click', firebaseDeploy);
 
     // ─── Language Toggle ───
     $('#btn-lang-python').addEventListener('click', () => switchLanguage('python'));
@@ -1223,6 +1541,18 @@ function getCellFromPointer(e) {
 
     if (row < 0 || row >= gridRows || col < 0 || col >= gridCols) return null;
     return [row, col];
+}
+
+// ═══════════════════════════════════════════════════════
+//  Deployment / Git Stubs
+// ═══════════════════════════════════════════════════════
+
+async function gitCommitAndPush() {
+    appendToConsole('Git Commit & Push feature is configured for local IDE usage.', 'info');
+}
+
+async function firebaseDeploy() {
+    appendToConsole('Firebase Deploy feature is configured for local IDE usage.', 'info');
 }
 
 // ═══════════════════════════════════════════════════════

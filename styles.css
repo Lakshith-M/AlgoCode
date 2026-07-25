@@ -377,6 +377,127 @@ html, body {
     line-height: 1;
 }
 
+/* ─── File Actions Toolbar ─── */
+.file-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+.btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.btn-icon:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* ─── Editor Tabs Bar ─── */
+.editor-tabs-bar {
+    display: flex;
+    align-items: center;
+    height: 34px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-subtle);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.tabs-container {
+    display: flex;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none; /* Firefox */
+}
+.tabs-container::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+.editor-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    padding: 0 12px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid transparent;
+    color: var(--text-muted);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    min-width: 100px;
+    max-width: 180px;
+}
+.editor-tab:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+.editor-tab.active {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-bottom-color: var(--accent);
+}
+.tab-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tab-dirty-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    opacity: 0;
+}
+.editor-tab.dirty .tab-dirty-dot {
+    opacity: 1;
+}
+.editor-tab.active.dirty .tab-dirty-dot {
+    background: var(--text-primary);
+}
+.tab-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+.editor-tab:hover .tab-close, .editor-tab.active .tab-close {
+    opacity: 1;
+}
+.tab-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ff6b6b;
+}
+
+/* File Rename Input */
+.tab-rename-input {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--accent);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 2px;
+    outline: none;
+    width: 100%;
+}
+
+
 /* ═══════════════════════════════════════════════════════
    Left Panel — Editor
    ═══════════════════════════════════════════════════════ */
