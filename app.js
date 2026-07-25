@@ -443,7 +443,8 @@ async function openLocalFile() {
     try {
         if ('showOpenFilePicker' in window) {
             // Modern API
-            const [fileHandle] = await window.showOpenFilePicker({
+            const fileHandles = await window.showOpenFilePicker({
+                multiple: true,
                 types: [
                     {
                         description: 'Code Files',
@@ -455,57 +456,63 @@ async function openLocalFile() {
                 ]
             });
             
-            const fileData = await fileHandle.getFile();
-            const contents = await fileData.text();
-            
-            // Determine language from extension
-            const lowerName = fileData.name.toLowerCase();
-            const lang = lowerName.endsWith('.cpp') || lowerName.endsWith('.cc') || lowerName.endsWith('.cxx') || lowerName.endsWith('.c') ? 'cpp' : 'python';
-            
-            fileIdCounter++;
-            const id = 'file_' + fileIdCounter;
-            openFiles.push({
-                id: id,
-                name: fileData.name,
-                content: contents,
-                language: lang,
-                isDirty: false,
-                fileHandle: fileHandle
-            });
-            
-            switchToFile(id);
-            appendToConsole(`Opened ${fileData.name}`, 'info');
+            for (const fileHandle of fileHandles) {
+                const fileData = await fileHandle.getFile();
+                const contents = await fileData.text();
+                
+                // Determine language from extension
+                const lowerName = fileData.name.toLowerCase();
+                const lang = lowerName.endsWith('.cpp') || lowerName.endsWith('.cc') || lowerName.endsWith('.cxx') || lowerName.endsWith('.c') ? 'cpp' : 'python';
+                
+                fileIdCounter++;
+                const id = 'file_' + fileIdCounter;
+                openFiles.push({
+                    id: id,
+                    name: fileData.name,
+                    content: contents,
+                    language: lang,
+                    isDirty: false,
+                    fileHandle: fileHandle
+                });
+                
+                switchToFile(id);
+                appendToConsole(`Opened ${fileData.name}`, 'info');
+            }
 
         } else {
             // Fallback for older browsers (standard file input)
             const input = document.createElement('input');
             input.type = 'file';
+            input.multiple = true;
             input.accept = '.py,.cpp,.cc';
             input.onchange = e => {
-                const fileData = e.target.files[0];
-                if (!fileData) return;
+                const files = e.target.files;
+                if (!files || files.length === 0) return;
                 
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const contents = e.target.result;
-                    const lowerName = fileData.name.toLowerCase();
-                    const lang = lowerName.endsWith('.cpp') || lowerName.endsWith('.cc') || lowerName.endsWith('.cxx') || lowerName.endsWith('.c') ? 'cpp' : 'python';
-                    
-                    fileIdCounter++;
-                    const id = 'file_' + fileIdCounter;
-                    openFiles.push({
-                        id: id,
-                        name: fileData.name,
-                        content: contents,
-                        language: lang,
-                        isDirty: false,
-                        fileHandle: null // Cannot hold handle with standard input
-                    });
-                    
-                    switchToFile(id);
-                    appendToConsole(`Opened ${fileData.name}`, 'info');
-                };
-                reader.readAsText(fileData);
+                for (let i = 0; i < files.length; i++) {
+                    const fileData = files[i];
+                    const reader = new FileReader();
+                    reader.onload = ev => {
+                        const contents = ev.target.result;
+                        const lowerName = fileData.name.toLowerCase();
+                        const lang = lowerName.endsWith('.cpp') || lowerName.endsWith('.cc') || lowerName.endsWith('.cxx') || lowerName.endsWith('.c') ? 'cpp' : 'python';
+                        
+                        fileIdCounter++;
+                        const id = 'file_' + fileIdCounter;
+                        openFiles.push({
+                            id: id,
+                            name: fileData.name,
+                            content: contents,
+                            language: lang,
+                            isDirty: false,
+                            fileHandle: null // Cannot hold handle with standard input
+                        });
+                        
+                        switchToFile(id);
+                        appendToConsole(`Opened ${fileData.name}`, 'info');
+                    };
+                    reader.readAsText(fileData);
+                }
             };
             input.click();
         }
