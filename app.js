@@ -627,7 +627,7 @@ int main() {
 function initGrid() {
     gridState = [];
     for (let r = 0; r < gridRows; r++) {
-        gridState[r] = new Array(gridCols).fill(0);
+        gridState[r] = new Array(gridCols).fill(1); // 1 = Normal/Empty
     }
 }
 
@@ -659,8 +659,10 @@ function renderGrid() {
                 cell.classList.add('start');
             } else if (r === goalNode[0] && c === goalNode[1]) {
                 cell.classList.add('goal');
-            } else if (gridState[r][c] === 1) {
+            } else if (gridState[r][c] === -1) {
                 cell.classList.add('wall');
+            } else if (gridState[r][c] > 1) {
+                cell.classList.add('weight-' + gridState[r][c]);
             }
 
             grid.appendChild(cell);
@@ -714,14 +716,16 @@ function updateCellVisual(r, c) {
     if (!cell) return;
 
     // Remove all state classes
-    cell.classList.remove('wall', 'start', 'goal', 'visited', 'open', 'closed', 'path');
+    cell.classList.remove('wall', 'start', 'goal', 'visited', 'open', 'closed', 'path', 'weight-2', 'weight-3', 'weight-4', 'weight-5');
 
     if (r === startNode[0] && c === startNode[1]) {
         cell.classList.add('start');
     } else if (r === goalNode[0] && c === goalNode[1]) {
         cell.classList.add('goal');
-    } else if (gridState[r][c] === 1) {
+    } else if (gridState[r][c] === -1) {
         cell.classList.add('wall');
+    } else if (gridState[r][c] > 1) {
+        cell.classList.add('weight-' + gridState[r][c]);
     }
 }
 
@@ -740,7 +744,7 @@ function clearVisualization() {
 function clearGrid() {
     for (let r = 0; r < gridRows; r++) {
         for (let c = 0; c < gridCols; c++) {
-            gridState[r][c] = 1;
+            gridState[r][c] = 1; // 1 = Normal/Empty
         }
     }
     startNode = [1, 1];
@@ -796,36 +800,12 @@ function generateMaze() {
         }
     }
     
-    // Add multiple paths by breaking random walls
-    let breakChance = isWeightsEnabled ? 0.40 : 0.25;
+    // Add multiple paths by breaking a few random walls (to make it a graph instead of a tree)
+    let breakChance = isWeightsEnabled ? 0.08 : 0.03; // Slightly more open if weights are used
     for (let r = 1; r < gridRows - 1; r++) {
         for (let c = 1; c < gridCols - 1; c++) {
             if (gridState[r][c] === -1 && Math.random() < breakChance) {
                 gridState[r][c] = 1;
-            }
-        }
-    }
-
-    // If weights are enabled, scatter terrain blobs
-    if (isWeightsEnabled) {
-        const terrainTypes = [2, 3, 4, 5];
-        const numBlobs = Math.floor((gridRows * gridCols) / 10);
-        for (let i = 0; i < numBlobs; i++) {
-            let tr = Math.floor(Math.random() * (gridRows - 2)) + 1;
-            let tc = Math.floor(Math.random() * (gridCols - 2)) + 1;
-            if (gridState[tr][tc] === 1) { 
-                let t = terrainTypes[Math.floor(Math.random() * terrainTypes.length)];
-                // Draw a 3x3 blob
-                for(let dr = -1; dr <= 1; dr++) {
-                    for(let dc = -1; dc <= 1; dc++) {
-                        let nr = tr + dr, nc = tc + dc;
-                        if (nr > 0 && nr < gridRows-1 && nc > 0 && nc < gridCols-1) {
-                            if (gridState[nr][nc] === 1 && Math.random() < 0.7) {
-                                gridState[nr][nc] = t;
-                            }
-                        }
-                    }
-                }
             }
         }
     }
