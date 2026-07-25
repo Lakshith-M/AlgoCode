@@ -1,0 +1,5 @@
+node_modules/
+.firebase/
+old_index.html
+*.pyc
+__pycache__/
