@@ -726,16 +726,16 @@ html, body {
 
 /* ─── Terrain Weights ─── */
 .weight-1-swatch { background: var(--cell-empty); }
-.weight-2-swatch { background: rgba(144, 238, 144, 0.4); }
-.weight-3-swatch { background: rgba(255, 255, 224, 0.4); }
-.weight-4-swatch { background: rgba(210, 180, 140, 0.4); }
-.weight-5-swatch { background: rgba(173, 216, 230, 0.5); }
+.weight-2-swatch { background: rgba(46, 178, 83, 0.7); }   /* Emerald Green */
+.weight-3-swatch { background: rgba(235, 198, 52, 0.7); }  /* Golden Sand */
+.weight-4-swatch { background: rgba(138, 86, 43, 0.7); }   /* Mud Brown */
+.weight-5-swatch { background: rgba(52, 152, 219, 0.7); }  /* Ocean Blue */
 
 .cell.weight-1 { background-color: var(--cell-empty); }
-.cell.weight-2 { background-color: rgba(144, 238, 144, 0.25); }
-.cell.weight-3 { background-color: rgba(255, 255, 224, 0.25); }
-.cell.weight-4 { background-color: rgba(210, 180, 140, 0.25); }
-.cell.weight-5 { background-color: rgba(173, 216, 230, 0.35); }
+.cell.weight-2 { background-color: rgba(46, 178, 83, 0.45); }
+.cell.weight-3 { background-color: rgba(235, 198, 52, 0.45); }
+.cell.weight-4 { background-color: rgba(138, 86, 43, 0.45); }
+.cell.weight-5 { background-color: rgba(52, 152, 219, 0.45); }
 
 .terrain-group {
     display: flex;

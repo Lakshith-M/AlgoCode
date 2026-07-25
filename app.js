@@ -25,12 +25,44 @@ document.getElementById('btn-toggle-weights')?.addEventListener('change', (e) =>
         if (!currentTool.startsWith('weight-')) {
             document.querySelector('.btn-tool[data-tool="weight-1"]').click();
         }
+        
+        // Scatter some initial weights if the grid has no weights yet
+        let hasWeights = false;
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                if (gridState[r][c] > 1) hasWeights = true;
+            }
+        }
+        if (!hasWeights) {
+            const terrainTypes = [2, 3, 4, 5];
+            const numBlobs = Math.floor((gridRows * gridCols) / 12);
+            for (let i = 0; i < numBlobs; i++) {
+                let tr = Math.floor(Math.random() * (gridRows - 2)) + 1;
+                let tc = Math.floor(Math.random() * (gridCols - 2)) + 1;
+                if (gridState[tr][tc] === 1) { 
+                    let t = terrainTypes[Math.floor(Math.random() * terrainTypes.length)];
+                    for(let dr = -1; dr <= 1; dr++) {
+                        for(let dc = -1; dc <= 1; dc++) {
+                            let nr = tr + dr, nc = tc + dc;
+                            if (nr > 0 && nr < gridRows-1 && nc > 0 && nc < gridCols-1) {
+                                if (gridState[nr][nc] === 1 && Math.random() < 0.6) {
+                                    gridState[nr][nc] = t;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     } else {
         terrainBar.classList.add('hidden');
         if (currentTool.startsWith('weight-')) {
             document.querySelector('.btn-tool[data-tool="wall"]').click();
         }
     }
+    
+    // Always re-render to either show or hide the weights immediately
+    renderGrid();
 });
 
 const terrainWeights = {
@@ -661,7 +693,7 @@ function renderGrid() {
                 cell.classList.add('goal');
             } else if (gridState[r][c] === -1) {
                 cell.classList.add('wall');
-            } else if (gridState[r][c] > 1) {
+            } else if (isWeightsEnabled && gridState[r][c] > 1) {
                 cell.classList.add('weight-' + gridState[r][c]);
             }
 
@@ -724,7 +756,7 @@ function updateCellVisual(r, c) {
         cell.classList.add('goal');
     } else if (gridState[r][c] === -1) {
         cell.classList.add('wall');
-    } else if (gridState[r][c] > 1) {
+    } else if (isWeightsEnabled && gridState[r][c] > 1) {
         cell.classList.add('weight-' + gridState[r][c]);
     }
 }
@@ -1642,7 +1674,7 @@ function initEventListeners() {
         const pos = getCellFromPointer(e);
         if (!pos) return;
         // For start/goal tools, only act once on initial click
-        if (currentTool === 'wall' || currentTool === 'erase') {
+        if (currentTool === 'wall' || currentTool === 'erase' || currentTool.startsWith('weight-')) {
             handleCellInteraction(pos[0], pos[1]);
         }
     });
