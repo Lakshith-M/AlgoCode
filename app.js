@@ -269,7 +269,7 @@ function renderTabs() {
         // Close button
         const closeBtn = document.createElement('div');
         closeBtn.className = 'tab-close';
-        closeBtn.innerHTML = '×';
+        closeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
         closeBtn.onclick = (e) => {
             e.stopPropagation();
             closeFile(file.id);
@@ -294,6 +294,20 @@ function switchLanguage(lang) {
     
     const file = openFiles.find(f => f.id === activeFileId);
     if (!file) return;
+
+    if (file.language === lang) return;
+
+    const oldLang = file.language;
+    const currentCode = editor.getValue();
+    
+    // Swap untouched templates
+    if (oldLang === 'python' && (file.content === getPythonTemplate() || currentCode === getPythonTemplate())) {
+        file.content = getCppTemplate();
+        editor.setValue(file.content, -1);
+    } else if (oldLang === 'cpp' && (file.content === getCppTemplate() || currentCode === getCppTemplate())) {
+        file.content = getPythonTemplate();
+        editor.setValue(file.content, -1);
+    }
 
     file.language = lang;
     currentLanguage = lang;
