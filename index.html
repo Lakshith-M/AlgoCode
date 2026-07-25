@@ -174,56 +174,58 @@
                         Coords
                     </button>
                 </div>
-                <div class="viz-toolbar terrain-toolbar hidden" id="terrain-toolbar">
-                    <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-right: 4px;">TERRAIN:</span>
-                    
-                    <div class="terrain-group">
-                        <button class="btn btn-tool active" data-tool="weight-1" title="Normal">
-                            <span class="tool-swatch weight-1-swatch"></span>Normal
-                        </button>
-                        <input type="number" id="weight-val-1" class="weight-input" value="1" disabled title="Normal weight is fixed at 1">
-                    </div>
-
-                    <div class="terrain-group">
-                        <button class="btn btn-tool" data-tool="weight-2" title="Grass">
-                            <span class="tool-swatch weight-2-swatch"></span>Grass
-                        </button>
-                        <input type="number" id="weight-val-2" class="weight-input" value="2" min="1" max="99" title="Edit Grass Weight">
-                    </div>
-
-                    <div class="terrain-group">
-                        <button class="btn btn-tool" data-tool="weight-3" title="Sand">
-                            <span class="tool-swatch weight-3-swatch"></span>Sand
-                        </button>
-                        <input type="number" id="weight-val-3" class="weight-input" value="4" min="1" max="99" title="Edit Sand Weight">
-                    </div>
-
-                    <div class="terrain-group">
-                        <button class="btn btn-tool" data-tool="weight-4" title="Mud">
-                            <span class="tool-swatch weight-4-swatch"></span>Mud
-                        </button>
-                        <input type="number" id="weight-val-4" class="weight-input" value="7" min="1" max="99" title="Edit Mud Weight">
-                    </div>
-
-                    <div class="terrain-group">
-                        <button class="btn btn-tool" data-tool="weight-5" title="Water">
-                            <span class="tool-swatch weight-5-swatch"></span>Water
-                        </button>
-                        <input type="number" id="weight-val-5" class="weight-input" value="10" min="1" max="99" title="Edit Water Weight">
-                    </div>
-                </div>
-
-                <div id="grid-container">
-                    <div id="grid-wrapper">
-                        <div id="col-labels" class="axis-labels col-labels hidden"></div>
-                        <div id="grid-row">
-                            <div id="row-labels" class="axis-labels row-labels hidden"></div>
-                            <div id="grid-inner">
-                                <div id="grid"></div>
-                                <div id="robot" class="hidden">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>
+                <div id="viz-content" style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
+                    <div id="grid-container" style="flex: 1;">
+                        <div id="grid-wrapper">
+                            <div id="col-labels" class="axis-labels col-labels hidden"></div>
+                            <div id="grid-row">
+                                <div id="row-labels" class="axis-labels row-labels hidden"></div>
+                                <div id="grid-inner">
+                                    <div id="grid"></div>
+                                    <div id="robot" class="hidden">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="viz-toolbar terrain-toolbar hidden" id="terrain-toolbar">
+                        <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; display: block;">TERRAIN:</span>
+                        
+                        <div class="terrain-group">
+                            <button class="btn btn-tool active" data-tool="weight-1" title="Normal">
+                                <span class="tool-swatch weight-1-swatch"></span>Normal
+                            </button>
+                            <input type="number" id="weight-val-1" class="weight-input" value="1" disabled title="Normal weight is fixed at 1">
+                        </div>
+
+                        <div class="terrain-group">
+                            <button class="btn btn-tool" data-tool="weight-2" title="Grass">
+                                <span class="tool-swatch weight-2-swatch"></span>Grass
+                            </button>
+                            <input type="number" id="weight-val-2" class="weight-input" value="2" min="1" max="99" title="Edit Grass Weight">
+                        </div>
+
+                        <div class="terrain-group">
+                            <button class="btn btn-tool" data-tool="weight-3" title="Sand">
+                                <span class="tool-swatch weight-3-swatch"></span>Sand
+                            </button>
+                            <input type="number" id="weight-val-3" class="weight-input" value="4" min="1" max="99" title="Edit Sand Weight">
+                        </div>
+
+                        <div class="terrain-group">
+                            <button class="btn btn-tool" data-tool="weight-4" title="Mud">
+                                <span class="tool-swatch weight-4-swatch"></span>Mud
+                            </button>
+                            <input type="number" id="weight-val-4" class="weight-input" value="7" min="1" max="99" title="Edit Mud Weight">
+                        </div>
+
+                        <div class="terrain-group">
+                            <button class="btn btn-tool" data-tool="weight-5" title="Water">
+                                <span class="tool-swatch weight-5-swatch"></span>Water
+                            </button>
+                            <input type="number" id="weight-val-5" class="weight-input" value="10" min="1" max="99" title="Edit Water Weight">
                         </div>
                     </div>
                 </div>
