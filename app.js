@@ -121,7 +121,14 @@ function initEditor() {
     editor.commands.addCommand({
         name: 'saveFile',
         bindKey: { win: 'Ctrl-S', mac: 'Cmd-S' },
-        exec: () => saveCurrentFile(),
+        exec: () => saveCurrentFile(false),
+    });
+
+    // Ctrl+Shift+S / Cmd+Shift+S for Save As
+    editor.commands.addCommand({
+        name: 'saveAsFile',
+        bindKey: { win: 'Ctrl-Shift-S', mac: 'Cmd-Shift-S' },
+        exec: () => saveCurrentFile(true),
     });
 }
 
@@ -428,7 +435,7 @@ async function openLocalFile() {
     }
 }
 
-async function saveCurrentFile() {
+async function saveCurrentFile(forceSaveAs = false) {
     if (isRunning || !activeFileId) return;
     
     const file = openFiles.find(f => f.id === activeFileId);
@@ -440,7 +447,7 @@ async function saveCurrentFile() {
     try {
         if ('showSaveFilePicker' in window) {
             // Modern API
-            if (!file.fileHandle) {
+            if (forceSaveAs || !file.fileHandle) {
                 // Pick a new file location
                 const ext = file.language === 'python' ? '.py' : '.cpp';
                 file.fileHandle = await window.showSaveFilePicker({
@@ -1484,7 +1491,8 @@ function initEventListeners() {
     // ─── File Actions ───
     $('#btn-new-file').addEventListener('click', () => createNewFile(false));
     $('#btn-open-file').addEventListener('click', openLocalFile);
-    $('#btn-save-file').addEventListener('click', saveCurrentFile);
+    $('#btn-save-file').addEventListener('click', () => saveCurrentFile(false));
+    $('#btn-save-as-file').addEventListener('click', () => saveCurrentFile(true));
 
 
 
