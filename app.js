@@ -1464,8 +1464,6 @@ function initEventListeners() {
     $('#btn-new-file').addEventListener('click', () => createNewFile(currentLanguage));
     $('#btn-open-file').addEventListener('click', openLocalFile);
     $('#btn-save-file').addEventListener('click', saveCurrentFile);
-    $('#btn-git-push').addEventListener('click', gitCommitAndPush);
-    $('#btn-deploy').addEventListener('click', firebaseDeploy);
 
     // ─── Language Toggle ───
     $('#btn-lang-python').addEventListener('click', () => switchLanguage('python'));
@@ -1555,18 +1553,6 @@ function getCellFromPointer(e) {
 
     if (row < 0 || row >= gridRows || col < 0 || col >= gridCols) return null;
     return [row, col];
-}
-
-// ═══════════════════════════════════════════════════════
-//  Deployment / Git Stubs
-// ═══════════════════════════════════════════════════════
-
-async function gitCommitAndPush() {
-    appendToConsole('Git Commit & Push feature is configured for local IDE usage.', 'info');
-}
-
-async function firebaseDeploy() {
-    appendToConsole('Firebase Deploy feature is configured for local IDE usage.', 'info');
 }
 
 // ═══════════════════════════════════════════════════════
