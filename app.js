@@ -797,10 +797,35 @@ function generateMaze() {
     }
     
     // Add multiple paths by breaking random walls
+    let breakChance = isWeightsEnabled ? 0.40 : 0.25;
     for (let r = 1; r < gridRows - 1; r++) {
         for (let c = 1; c < gridCols - 1; c++) {
-            if (gridState[r][c] === -1 && Math.random() < 0.12) {
+            if (gridState[r][c] === -1 && Math.random() < breakChance) {
                 gridState[r][c] = 1;
+            }
+        }
+    }
+
+    // If weights are enabled, scatter terrain blobs
+    if (isWeightsEnabled) {
+        const terrainTypes = [2, 3, 4, 5];
+        const numBlobs = Math.floor((gridRows * gridCols) / 10);
+        for (let i = 0; i < numBlobs; i++) {
+            let tr = Math.floor(Math.random() * (gridRows - 2)) + 1;
+            let tc = Math.floor(Math.random() * (gridCols - 2)) + 1;
+            if (gridState[tr][tc] === 1) { 
+                let t = terrainTypes[Math.floor(Math.random() * terrainTypes.length)];
+                // Draw a 3x3 blob
+                for(let dr = -1; dr <= 1; dr++) {
+                    for(let dc = -1; dc <= 1; dc++) {
+                        let nr = tr + dr, nc = tc + dc;
+                        if (nr > 0 && nr < gridRows-1 && nc > 0 && nc < gridCols-1) {
+                            if (gridState[nr][nc] === 1 && Math.random() < 0.7) {
+                                gridState[nr][nc] = t;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
