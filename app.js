@@ -14,6 +14,40 @@ let startNode = [1, 1];
 let goalNode  = [23, 23];
 
 let currentTool = 'wall';
+
+let isWeightsEnabled = false;
+
+document.getElementById('btn-toggle-weights')?.addEventListener('change', (e) => {
+    isWeightsEnabled = e.target.checked;
+    const terrainBar = document.getElementById('terrain-toolbar');
+    if (isWeightsEnabled) {
+        terrainBar.classList.remove('hidden');
+        if (!currentTool.startsWith('weight-')) {
+            document.querySelector('.btn-tool[data-tool="weight-1"]').click();
+        }
+    } else {
+        terrainBar.classList.add('hidden');
+        if (currentTool.startsWith('weight-')) {
+            document.querySelector('.btn-tool[data-tool="wall"]').click();
+        }
+    }
+});
+
+const terrainWeights = {
+    1: 1, 2: 2, 3: 4, 4: 7, 5: 10
+};
+
+[2,3,4,5].forEach(id => {
+    document.getElementById(`weight-val-${id}`)?.addEventListener('change', (e) => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val) || val < 1) {
+            val = 1;
+            e.target.value = 1;
+        }
+        terrainWeights[id] = val;
+    });
+});
+
 let isDrawing   = false;
 let isRunning   = false;
 let executionStopped = false;
@@ -706,7 +740,7 @@ function clearVisualization() {
 function clearGrid() {
     for (let r = 0; r < gridRows; r++) {
         for (let c = 0; c < gridCols; c++) {
-            gridState[r][c] = 0;
+            gridState[r][c] = 1;
         }
     }
     startNode = [1, 1];
@@ -728,16 +762,16 @@ function changeGridSize(size) {
 // ═══════════════════════════════════════════════════════
 
 function generateMaze() {
-    // Fill with walls
+    // Fill with walls (-1)
     for (let r = 0; r < gridRows; r++) {
         for (let c = 0; c < gridCols; c++) {
-            gridState[r][c] = 1;
+            gridState[r][c] = -1;
         }
     }
 
-    // Iterative DFS to carve passages
+    // Iterative DFS to carve passages (1 for empty)
     const stack = [[1, 1]];
-    gridState[1][1] = 0;
+    gridState[1][1] = 1;
 
     while (stack.length > 0) {
         const [r, c] = stack[stack.length - 1];
@@ -746,7 +780,7 @@ function generateMaze() {
         for (const [dr, dc] of [[-2,0],[2,0],[0,-2],[0,2]]) {
             const nr = r + dr;
             const nc = c + dc;
-            if (nr > 0 && nr < gridRows - 1 && nc > 0 && nc < gridCols - 1 && gridState[nr][nc] === 1) {
+            if (nr > 0 && nr < gridRows - 1 && nc > 0 && nc < gridCols - 1 && gridState[nr][nc] === -1) {
                 neighbors.push([nr, nc, dr, dc]);
             }
         }
@@ -754,27 +788,33 @@ function generateMaze() {
         if (neighbors.length > 0) {
             const idx = Math.floor(Math.random() * neighbors.length);
             const [nr, nc, dr, dc] = neighbors[idx];
-            // Carve wall between current and neighbor
-            gridState[r + dr / 2][c + dc / 2] = 0;
-            gridState[nr][nc] = 0;
+            gridState[r + dr / 2][c + dc / 2] = 1;
+            gridState[nr][nc] = 1;
             stack.push([nr, nc]);
         } else {
             stack.pop();
         }
     }
+    
+    // Add multiple paths by breaking random walls
+    for (let r = 1; r < gridRows - 1; r++) {
+        for (let c = 1; c < gridCols - 1; c++) {
+            if (gridState[r][c] === -1 && Math.random() < 0.12) {
+                gridState[r][c] = 1;
+            }
+        }
+    }
 
-    // Ensure start and goal are open passages
     startNode = [1, 1];
     goalNode  = [gridRows - 2, gridCols - 2];
-    gridState[startNode[0]][startNode[1]] = 0;
-    gridState[goalNode[0]][goalNode[1]] = 0;
+    gridState[startNode[0]][startNode[1]] = 1;
+    gridState[goalNode[0]][goalNode[1]] = 1;
 
-    // Also open a small area around goal in case maze didn't reach it
     if (gridRows % 2 === 0) {
-        if (goalNode[0] > 1) gridState[goalNode[0]-1][goalNode[1]] = 0;
+        if (goalNode[0] > 1) gridState[goalNode[0]-1][goalNode[1]] = 1;
     }
     if (gridCols % 2 === 0) {
-        if (goalNode[1] > 1) gridState[goalNode[0]][goalNode[1]-1] = 0;
+        if (goalNode[1] > 1) gridState[goalNode[0]][goalNode[1]-1] = 1;
     }
 
     clearVisualization();
@@ -788,25 +828,26 @@ function generateMaze() {
 function handleCellInteraction(r, c) {
     if (isRunning) return;
 
-    switch (currentTool) {
-        case 'wall':
-            if (!isStartOrGoal(r, c)) {
-                gridState[r][c] = 1;
-                updateCellVisual(r, c);
-            }
-            break;
-        case 'erase':
-            if (!isStartOrGoal(r, c)) {
-                gridState[r][c] = 0;
-                updateCellVisual(r, c);
-            }
-            break;
-        case 'start':
-            moveStartNode(r, c);
-            break;
-        case 'goal':
-            moveGoalNode(r, c);
-            break;
+    if (currentTool === 'wall') {
+        if (!isStartOrGoal(r, c)) {
+            gridState[r][c] = -1;
+            updateCellVisual(r, c);
+        }
+    } else if (currentTool === 'erase') {
+        if (!isStartOrGoal(r, c)) {
+            gridState[r][c] = 1;
+            updateCellVisual(r, c);
+        }
+    } else if (currentTool.startsWith('weight-')) {
+        const typeId = parseInt(currentTool.split('-')[1]);
+        if (!isStartOrGoal(r, c)) {
+            gridState[r][c] = typeId;
+            updateCellVisual(r, c);
+        }
+    } else if (currentTool === 'start') {
+        moveStartNode(r, c);
+    } else if (currentTool === 'goal') {
+        moveGoalNode(r, c);
     }
 }
 
@@ -819,7 +860,7 @@ function moveStartNode(r, c) {
     if (r === goalNode[0] && c === goalNode[1]) return;
     const oldR = startNode[0], oldC = startNode[1];
     startNode = [r, c];
-    gridState[r][c] = 0; // Clear wall if any
+    gridState[r][c] = 1; // Clear wall if any
     updateCellVisual(oldR, oldC);
     updateCellVisual(r, c);
 }
@@ -828,7 +869,7 @@ function moveGoalNode(r, c) {
     if (r === startNode[0] && c === startNode[1]) return;
     const oldR = goalNode[0], oldC = goalNode[1];
     goalNode = [r, c];
-    gridState[r][c] = 0;
+    gridState[r][c] = 1;
     updateCellVisual(oldR, oldC);
     updateCellVisual(r, c);
 }
@@ -916,7 +957,10 @@ function setupGlobalBridge() {
 
     // Grid info bridge
     globalThis._getGridState = function() {
-        return gridState.map(row => Array.from(row));
+        return gridState.map(row => row.map(cell => {
+            if (cell === -1) return -1;
+            return isWeightsEnabled ? terrainWeights[cell] : 1;
+        }));
     };
     globalThis._getStartNode = function() {
         return Array.from(startNode);

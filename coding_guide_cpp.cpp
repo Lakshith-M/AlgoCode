@@ -97,7 +97,7 @@
 //          int newR = r + dr[i];
 //          int newC = c + dc[i];
 //          if (newR >= 0 && newR < rows && newC >= 0 && newC < cols
-//              && get_grid_cell(newR, newC) == 0) {
+//              && get_grid_cell(newR, newC) != -1) {
 //              nr[ncount] = newR;
 //              nc[ncount] = newC;
 //              ncount++;
@@ -189,7 +189,7 @@
 //             int nr = cr + dr[i];
 //             int nc = cc + dc[i];
 //             if (nr >= 0 && nr < rows && nc >= 0 && nc < cols
-//                 && get_grid_cell(nr, nc) == 0
+//                 && get_grid_cell(nr, nc) != -1
 //                 && visited[nr][nc] == 0) {
 //                 visited[nr][nc] = 1;
 //                 parentR[nr][nc] = cr;
@@ -301,7 +301,7 @@
 //             int nr = cr + dr[i];
 //             int nc = cc + dc[i];
 //             if (nr >= 0 && nr < rows && nc >= 0 && nc < cols
-//                 && get_grid_cell(nr, nc) == 0
+//                 && get_grid_cell(nr, nc) != -1
 //                 && visited[nr][nc] == 0) {
 //                 visited[nr][nc] = 1;
 //                 parentR[nr][nc] = cr;

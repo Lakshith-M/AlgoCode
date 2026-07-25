@@ -1,1 +1,0 @@
-window.JSCPP = require('JSCPP');

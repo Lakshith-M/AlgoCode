@@ -83,7 +83,7 @@
 #      neighbors = []
 #      for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:  # Up, Down, Left, Right
 #          nr, nc = r + dr, c + dc
-#          if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 0:
+#          if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != -1:
 #              neighbors.append((nr, nc))
 #      return neighbors
 #
@@ -152,7 +152,7 @@
 #     r, c = node
 #     for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
 #         nr, nc = r + dr, c + dc
-#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 0:
+#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != -1:
 #             yield (nr, nc)
 #
 # # ── BFS ──
@@ -224,7 +224,7 @@
 #     r, c = node
 #     for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
 #         nr, nc = r + dr, c + dc
-#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 0:
+#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != -1:
 #             yield (nr, nc)
 #
 # def heuristic(a, b):
@@ -308,7 +308,7 @@
 #     r, c = node
 #     for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
 #         nr, nc = r + dr, c + dc
-#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 0:
+#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != -1:
 #             yield (nr, nc)
 #
 # # ── Dijkstra ──
@@ -383,7 +383,7 @@
 #     r, c = node
 #     for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
 #         nr, nc = r + dr, c + dc
-#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 0:
+#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != -1:
 #             yield (nr, nc)
 #
 # # ── DFS ──
@@ -450,7 +450,7 @@
 #     r, c = node
 #     for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
 #         nr, nc = r + dr, c + dc
-#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 0:
+#         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != -1:
 #             yield (nr, nc)
 #
 # def heuristic(a, b):
