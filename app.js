@@ -100,7 +100,23 @@ function initEditor() {
     });
     
     // Listen for changes to mark file as dirty
+    let autoSaveTimer = null;
     editor.session.on('change', () => {
+        // Auto-save debounce
+        if (activeFileId && !isSwitchingFile) {
+            const activeFile = openFiles.find(f => f.id === activeFileId);
+            if (activeFile && activeFile.fileHandle) {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(() => {
+                    if (activeFile.isDirty) {
+                        saveCurrentFile(false);
+                        activeFile.isDirty = false;
+                        renderTabs();
+                    }
+                }, 1000);
+            }
+        }
+
         if (!activeFileId || isSwitchingFile) return;
         const activeFile = openFiles.find(f => f.id === activeFileId);
         if (activeFile && !activeFile.isDirty) {
@@ -644,12 +660,12 @@ function renderAxisLabels(cellSize) {
         colLabels.appendChild(label);
     }
 
-    // Row labels (Y axis — along the left, 0 at bottom)
+    // Row labels (Y axis — along the left, 0 at top)
     rowLabels.innerHTML = '';
     for (let r = 0; r < gridRows; r++) {
         const label = document.createElement('span');
         label.className = 'axis-label';
-        label.textContent = gridRows - 1 - r;
+        label.textContent = r;
         label.style.height = (cellSize + 1) + 'px';
         rowLabels.appendChild(label);
     }
@@ -1050,6 +1066,7 @@ class Visualizer:
         self._check_stopped()
         import js
         # Break into chunks for responsive stopping
+        self._step_count = 0
         chunk = 50
         remaining = ms
         while remaining > 0:
@@ -1137,6 +1154,16 @@ import sys
 sys.stdout = _StdoutCapture()
 sys.stderr = _StderrCapture()
 visualizer._stopped = False
+visualizer._step_count = 0
+
+def _infinite_loop_guard(frame, event, arg):
+    if event == 'line':
+        visualizer._step_count += 1
+        if visualizer._step_count > 1000000:
+            raise TimeoutError("Execution exceeded step limit (infinite loop detected).")
+    return _infinite_loop_guard
+sys.settrace(_infinite_loop_guard)
+
 `);
     // Execute user code
     await pyodide.runPythonAsync(code);
@@ -1146,6 +1173,11 @@ function onStop() {
     if (!isRunning) return;
     executionStopped = true;
     globalThis._executionStopped = true;
+    if (typeof cppWorker !== 'undefined' && cppWorker) {
+        cppWorker.terminate();
+        cppWorker = null;
+        appendToConsole('\nC++ Execution stopped by user.', 'warning');
+    }
 }
 
 function handlePythonError(err) {
@@ -1189,32 +1221,62 @@ function handleCppError(err) {
 //  C++ Execution Engine (JSCPP)
 // ═══════════════════════════════════════════════════════
 
+
+let cppWorker = null;
+
 async function runCpp(userCode) {
-    if (typeof JSCPP === 'undefined') {
-        throw new Error('JSCPP library not loaded. Check your internet connection and refresh the page.');
+    if (typeof JSCPP === 'undefined' && !window.Worker) {
+        throw new Error('JSCPP library or Worker not supported.');
     }
 
+    let processedCode = preprocessCppCode(userCode);
+
+    if (cppWorker) {
+        cppWorker.terminate();
+    }
+    
+    // Fallback if running on local file:// without server (workers require HTTP)
+    if (window.location.protocol === 'file:') {
+        appendToConsole('⚠ Warning: Web Workers not supported on file://. Running synchronously...\n', 'warning');
+        return runCppSync(userCode);
+    }
+
+    cppWorker = new Worker('jscpp_worker.js');
+
+    return new Promise((resolve, reject) => {
+        cppWorker.onmessage = async function(e) {
+            const data = e.data;
+            flushCppOutput(data.outputLines);
+            if (data.success) {
+                if (data.vizCommands && data.vizCommands.length > 0) {
+                    appendToConsole(`\nReplaying ${data.vizCommands.length} visualization steps…`, 'info');
+                    await replayVizCommands(data.vizCommands);
+                }
+                resolve();
+            } else {
+                reject(new Error(data.error));
+            }
+        };
+        cppWorker.onerror = function(err) {
+            reject(new Error("Worker error: " + err.message));
+        };
+        cppWorker.postMessage({ code: processedCode });
+    });
+}
+
+async function runCppSync(userCode) {
     // Collect viz commands for batched replay
     const vizCommands = [];
 
-    // Build wrapper code with our API functions implemented as macros/simple functions
-    // JSCPP doesn't support custom function injection easily, so we transpile our API calls
-    // into code that uses cout with special markers
-
-    // Pre-process user code to convert our API to cout markers
     let processedCode = preprocessCppCode(userCode);
-
     const outputLines = [];
     const config = {
         stdio: {
             write: function(s) {
-                // Parse output for viz command markers
                 const str = String(s);
                 if (str.startsWith('__VIZ__:')) {
-                    const parts = str.substring(8).trim().split(':');
-                    vizCommands.push(parts);
+                    vizCommands.push(str.substring(8).trim().split(':'));
                 } else {
-                    // Regular output — accumulate
                     outputLines.push(str);
                 }
             }
@@ -1222,25 +1284,19 @@ async function runCpp(userCode) {
         unsigned_overflow: 'warn',
     };
 
-    // Run JSCPP
     try {
         JSCPP.run(processedCode, '', config);
     } catch (e) {
-        // Flush any buffered output first
         flushCppOutput(outputLines);
         throw e;
     }
 
-    // Flush regular output
     flushCppOutput(outputLines);
-
-    // Replay viz commands with animation
     if (vizCommands.length > 0) {
         appendToConsole(`\nReplaying ${vizCommands.length} visualization steps…`, 'info');
         await replayVizCommands(vizCommands);
     }
 }
-
 function flushCppOutput(outputLines) {
     // Join and split by newlines to get proper lines
     const fullText = outputLines.join('');
